@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, LogBox, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -20,6 +20,34 @@ const Stack = createStackNavigator();
 
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
+  const navigationRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    console.log('AppContent - Auth state:', { isAuthenticated, loading });
+  }, [isAuthenticated, loading]);
+
+  useEffect(() => {
+    if (!loading && isReady && navigationRef.current) {
+      console.log('Navigating based on auth state:', isAuthenticated);
+      if (isAuthenticated) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      } else {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }],
+        });
+      }
+    }
+  }, [isAuthenticated, loading, isReady]);
+
+  const onNavigationReady = () => {
+    console.log('Navigation container ready');
+    setIsReady(true);
+  };
 
   if (loading) {
     return (
@@ -30,13 +58,13 @@ const AppContent = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
-          <Stack.Screen name="Main" component={MainNavigator} />
-        ) : (
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        )}
+    <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
+      <Stack.Navigator 
+        screenOptions={{ headerShown: false }}
+        initialRouteName={isAuthenticated ? "Main" : "Auth"}
+      >
+        <Stack.Screen name="Auth" component={AuthScreen} />
+        <Stack.Screen name="Main" component={MainNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );

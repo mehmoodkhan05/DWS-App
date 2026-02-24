@@ -43,15 +43,59 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
-      const { user: userData, token } = await authAPI.login(email, password);
-      setUser(userData);
-      setProfile(userData);
-      setSession({ token });
+      console.log('Starting login...');
+      const response = await authAPI.login(email, password);
+      console.log('Login API response:', response);
+      
+      // Handle different response structures
+      // API might return { user: {...}, token: "..." } or { ...userData, token: "..." }
+      const userData = response.user || response;
+      const token = response.token;
+      
+      console.log('Extracted userData:', userData);
+      console.log('Extracted token:', token ? 'Token exists' : 'No token');
+      
+      if (!token) {
+        throw new Error('No token received from server');
+      }
+      
+      // Check if userData is valid (not empty object and not null)
+      if (!userData || (typeof userData === 'object' && Object.keys(userData).length === 0 && !userData.id)) {
+        // If no user data in response, fetch it using getMe
+        console.log('No user data in login response, fetching profile...');
+        const profileData = await authAPI.getMe();
+        console.log('Fetched profile data:', profileData);
+        setUser(profileData);
+        setProfile(profileData);
+      } else {
+        setUser(userData);
+        setProfile(userData);
+      }
+      
+      // Token is already saved by authAPI.login, but verify it
+      const savedToken = await getToken();
+      if (!savedToken) {
+        await setToken(token);
+      }
+      
+      // Update session with token
+      const finalToken = savedToken || token;
+      setSession({ token: finalToken });
+      
+      console.log('Login successful, user set:', !!userData);
+      console.log('Session set:', !!finalToken);
+      
       return {};
     } catch (error) {
+      console.error('Login error:', error);
+      // Clear any partial state on error
+      setUser(null);
+      setProfile(null);
+      setSession(null);
       return { error: error.message || 'Login failed' };
     } finally {
       setLoading(false);
+      console.log('Login loading set to false');
     }
   };
 
@@ -81,6 +125,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isAuthenticated = !!user && !!session;
+  
+  // Debug logging for authentication state
+  useEffect(() => {
+    console.log('Auth state changed:', {
+      hasUser: !!user,
+      hasSession: !!session,
+      isAuthenticated,
+      loading,
+    });
+  }, [user, session, isAuthenticated, loading]);
+
   const value = {
     user,
     profile,
@@ -89,7 +145,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     logout,
     loading,
-    isAuthenticated: !!user && !!session,
+    isAuthenticated,
     isAdmin: profile?.role === 'admin',
     isManager: profile?.role === 'manager',
     isEmployee: profile?.role === 'employee',
