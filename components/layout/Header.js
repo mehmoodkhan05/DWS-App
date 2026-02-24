@@ -50,7 +50,12 @@ const Header = () => {
   };
 
   const navigateToScreen = (screenName) => {
-    navigation.navigate('MainStack', { screen: screenName });
+    const tabScreens = ['Dashboard', 'Schedule', 'Messages', 'Settings'];
+    if (tabScreens.includes(screenName)) {
+      navigation.navigate('MainStack', { screen: 'MainTabs', params: { screen: screenName } });
+    } else {
+      navigation.navigate('MainStack', { screen: screenName });
+    }
   };
 
   return (

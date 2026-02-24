@@ -22,19 +22,16 @@ const getDevApiUrl = () => {
   return 'http://localhost:5000/api';
 };
 
-// For production (cPanel server)
-// Based on server.js analysis:
-// - Backend is in /dwsoffice/backend/ folder
-// - Server has middleware that handles /dwsoffice/ paths
-// - API routes are mounted at /api/*
+// For production (cPanel API backend - subdomain: deltawatch.webypixels.com)
+// API routes are expected at /api/*
 //
 // Try these URL patterns if you get 404 errors:
-// Option 1: With /backend (current - if cPanel serves Node.js from /backend folder)
-const PROD_API_URL_OPTION1 = 'https://webypixels.com/dwsoffice/backend/api';
-// Option 2: Without /backend (if middleware strips /dwsoffice/backend to /api)
-const PROD_API_URL_OPTION2 = 'https://webypixels.com/dwsoffice/api';
-// Option 3: Direct API path (if backend is served at root)
-const PROD_API_URL_OPTION3 = 'https://webypixels.com/api';
+// Option 1: API at root (e.g. https://deltawatch.webypixels.com/api)
+const PROD_API_URL_OPTION1 = 'https://deltawatch.webypixels.com/api';
+// Option 2: With /backend path (if cPanel serves Node.js from /backend folder)
+const PROD_API_URL_OPTION2 = 'https://deltawatch.webypixels.com/backend/api';
+// Option 3: With /dwsoffice/backend path (legacy webypixels path)
+const PROD_API_URL_OPTION3 = 'https://deltawatch.webypixels.com/dwsoffice/backend/api';
 
 // ============================================
 // CHANGE THIS TO THE OPTION THAT WORKS

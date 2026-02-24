@@ -4,7 +4,7 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const navigation = [
+const DRAWER_ITEMS = [
   { icon: 'calendar-outline', label: 'Dashboard', route: 'Dashboard' },
   { icon: 'calendar', label: 'My Schedule', route: 'Schedule' },
   { icon: 'chatbubbles-outline', label: 'Messages', route: 'Messages' },
@@ -25,17 +25,30 @@ const CustomDrawer = (props) => {
   const { isAdmin, isManager } = useAuth();
   const { state, navigation } = props;
 
-  const filteredNavigation = navigation.filter(item => {
+  const filteredNavigation = DRAWER_ITEMS.filter(item => {
     if (item.adminOnly && !isAdmin && !isManager) return false;
     return true;
   });
 
   const getCurrentRoute = () => {
     const route = state.routes[state.index];
-    if (route.state) {
-      return route.state.routes[route.state.index].name;
+    if (!route.state) return route.name;
+    const stackRoute = route.state.routes[route.state.index];
+    if (stackRoute.name === 'MainTabs' && stackRoute.state?.routes) {
+      return stackRoute.state.routes[stackRoute.state.index]?.name ?? 'Dashboard';
     }
-    return route.name;
+    return stackRoute.name;
+  };
+
+  const TAB_ROUTES = ['Dashboard', 'Schedule', 'Messages', 'Settings'];
+
+  const navigateTo = (item) => {
+    if (TAB_ROUTES.includes(item.route)) {
+      navigation.navigate('MainStack', { screen: 'MainTabs', params: { screen: item.route } });
+    } else {
+      navigation.navigate('MainStack', { screen: item.route });
+    }
+    props.navigation.closeDrawer();
   };
 
   const currentRoute = getCurrentRoute();
@@ -49,10 +62,7 @@ const CustomDrawer = (props) => {
             <TouchableOpacity
               key={item.route}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
-              onPress={() => {
-                navigation.navigate('MainStack', { screen: item.route });
-                props.navigation.closeDrawer();
-              }}
+              onPress={() => navigateTo(item)}
             >
               <Ionicons
                 name={item.icon}
