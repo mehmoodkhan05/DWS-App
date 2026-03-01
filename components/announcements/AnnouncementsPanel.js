@@ -1,139 +1,272 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Modal, Alert, ActivityIndicator, Switch, FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAnnouncements } from '../../hooks/useAnnouncements';
-import { Ionicons } from '@expo/vector-icons';
 import { formatDateOnly } from '../../lib/utils';
+
+const GOLD = '#d4af37';
 
 const AnnouncementsPanel = () => {
   const { isAdmin, isManager } = useAuth();
+  const isAdminOrManager = isAdmin || isManager;
   const { announcements, loading, createAnnouncement, deleteAnnouncement } = useAnnouncements();
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const handleDelete = async (id) => {
-    Alert.alert(
-      'Delete Announcement',
-      'Are you sure you want to delete this announcement?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAnnouncement(id);
-              Alert.alert('Success', 'Announcement deleted');
-            } catch (error) {
-              Alert.alert('Error', error.message);
-            }
-          },
-        },
-      ]
-    );
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    title: '',
+    content: '',
+    target_role: 'all',
+    target_department: '',
+    expires_at: '',
+    is_pinned: false,
+  });
+
+  const TARGET_ROLE_OPTIONS = ['all', 'admin', 'manager', 'employee'];
+
+  const sortedAnnouncements = useMemo(() => {
+    const now = new Date();
+    return [...announcements].sort((a, b) => {
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  }, [announcements]);
+
+  const isExpired = (expiresAt) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
   };
 
-  const filteredAnnouncements = announcements.filter(a => {
-    const now = new Date();
-    const notExpired = !a.expires_at || new Date(a.expires_at) > now;
-    return notExpired;
-  });
+  const handleDelete = (id) => {
+    Alert.alert('Delete Announcement', 'Are you sure you want to delete this announcement?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteAnnouncement(id);
+          } catch (e) {
+            Alert.alert('Error', e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    if (!form.content.trim()) {
+      Alert.alert('Validation', 'Content is required.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await createAnnouncement({
+        title: form.title,
+        content: form.content,
+        target_role: form.target_role,
+        target_department: form.target_department || null,
+        expires_at: form.expires_at || null,
+        is_pinned: form.is_pinned,
+      });
+      setForm({ title: '', content: '', target_role: 'all', target_department: '', expires_at: '', is_pinned: false });
+      setShowCreateModal(false);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={GOLD} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {(isAdmin || isManager) && (
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-          <Text style={styles.createButtonText}>Create Announcement</Text>
+      {isAdminOrManager && (
+        <TouchableOpacity style={styles.createBtn} onPress={() => setShowCreateModal(true)}>
+          <Ionicons name="add" size={16} color="#fff" />
+          <Text style={styles.createBtnText}>New Announcement</Text>
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.announcementsList}>
-        {filteredAnnouncements.map((announcement) => {
-          const isExpired = announcement.expires_at && new Date(announcement.expires_at) < new Date();
-          
-          return (
-            <View
-              key={announcement.id}
-              style={[
-                styles.announcementCard,
-                announcement.is_pinned && styles.pinnedCard,
-                isExpired && styles.expiredCard,
-              ]}
-            >
-              <View style={styles.announcementHeader}>
-                <View style={styles.announcementTitleRow}>
-                  {announcement.is_pinned && (
-                    <Ionicons name="pin" size={16} color="#d4af37" style={styles.pinIcon} />
-                  )}
-                  <Text style={styles.announcementTitle}>{announcement.title}</Text>
-                </View>
-                <View style={styles.badges}>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      {announcement.target_role || 'All'}
+      {sortedAnnouncements.length === 0 ? (
+        <View style={styles.empty}>
+          <Ionicons name="megaphone-outline" size={40} color="#d1d5db" />
+          <Text style={styles.emptyText}>No announcements</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={sortedAnnouncements}
+          keyExtractor={(item) => item.id?.toString()}
+          scrollEnabled={false}
+          renderItem={({ item }) => {
+            const expired = isExpired(item.expires_at);
+            return (
+              <View style={[
+                styles.card,
+                item.is_pinned && styles.pinnedCard,
+                expired && styles.expiredCard,
+              ]}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.titleRow}>
+                    {!!item.is_pinned && (
+                      <Ionicons name="pin" size={14} color={GOLD} style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.cardTitle, expired && styles.expiredText]} numberOfLines={2}>
+                      {item.title}
                     </Text>
                   </View>
-                  {announcement.target_department && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{announcement.target_department}</Text>
+                  {isAdminOrManager && (
+                    <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.badgeRow}>
+                  {item.target_role && item.target_role !== 'all' && (
+                    <View style={styles.roleBadge}>
+                      <Text style={styles.roleBadgeText}>{item.target_role}</Text>
+                    </View>
+                  )}
+                  {item.target_department && (
+                    <View style={styles.deptBadge}>
+                      <Text style={styles.deptBadgeText}>{item.target_department}</Text>
+                    </View>
+                  )}
+                  {expired && (
+                    <View style={styles.expiredBadge}>
+                      <Text style={styles.expiredBadgeText}>Expired</Text>
                     </View>
                   )}
                 </View>
-                {(isAdmin || isManager) && (
-                  <TouchableOpacity
-                    onPress={() => handleDelete(announcement.id)}
-                    style={styles.deleteButton}
-                  >
-                    <Ionicons name="trash" size={20} color="#ef4444" />
-                  </TouchableOpacity>
-                )}
-              </View>
 
-              <Text style={styles.announcementContent}>{announcement.content}</Text>
-
-              <View style={styles.announcementFooter}>
-                <Text style={styles.footerText}>
-                  By {announcement.author_name || 'Unknown'}
+                <Text style={[styles.content, expired && styles.expiredText]}>
+                  {item.content}
                 </Text>
-                <Text style={styles.footerText}>
-                  {formatDateOnly(announcement.created_at)}
-                </Text>
-                {announcement.expires_at && (
-                  <Text
-                    style={[
-                      styles.footerText,
-                      isExpired && styles.expiredText,
-                    ]}
-                  >
-                    Expires: {formatDateOnly(announcement.expires_at)}
-                  </Text>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
 
+                <View style={styles.cardFooter}>
+                  <Text style={styles.author}>By {item.author_name || 'Admin'}</Text>
+                  <View style={styles.footerRight}>
+                    <Text style={styles.dateText}>{formatDateOnly(item.created_at)}</Text>
+                    {item.expires_at && (
+                      <Text style={styles.expiresText}>
+                        Expires {formatDateOnly(item.expires_at)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+
+      {/* Create Announcement Modal */}
       <Modal
         visible={showCreateModal}
+        transparent
         animationType="slide"
-        transparent={true}
         onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create Announcement</Text>
-            {/* Form would go here */}
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => setShowCreateModal(false)}
-            >
-              <Text style={styles.modalButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>New Announcement</Text>
+                <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Title *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Announcement title"
+                value={form.title}
+                onChangeText={(v) => setForm({ ...form, title: v })}
+              />
+
+              <Text style={styles.label}>Content *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Announcement content..."
+                value={form.content}
+                onChangeText={(v) => setForm({ ...form, content: v })}
+                multiline
+                numberOfLines={4}
+              />
+
+              <Text style={styles.label}>Target Role</Text>
+              <View style={styles.optionsRow}>
+                {TARGET_ROLE_OPTIONS.map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    style={[styles.optionBtn, form.target_role === role && styles.optionBtnActive]}
+                    onPress={() => setForm({ ...form, target_role: role })}
+                  >
+                    <Text style={[styles.optionBtnText, form.target_role === role && styles.optionBtnTextActive]}>
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Target Department (optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Security, Operations"
+                value={form.target_department}
+                onChangeText={(v) => setForm({ ...form, target_department: v })}
+              />
+
+              <Text style={styles.label}>Expiry Date (YYYY-MM-DD, optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 2026-04-01"
+                value={form.expires_at}
+                onChangeText={(v) => setForm({ ...form, expires_at: v })}
+              />
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Pin Announcement</Text>
+                <Switch
+                  value={form.is_pinned}
+                  onValueChange={(v) => setForm({ ...form, is_pinned: v })}
+                  trackColor={{ false: '#d1d5db', true: GOLD }}
+                  thumbColor="#fff"
+                />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowCreateModal(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={submitting}>
+                  {submitting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Post Announcement</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -141,133 +274,79 @@ const AnnouncementsPanel = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
+  container: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  createBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: GOLD, paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12,
   },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#d4af37',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+  createBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  empty: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { color: '#9ca3af', marginTop: 8, fontSize: 14 },
+  card: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 14,
+    marginBottom: 10, borderWidth: 1, borderColor: '#e5e7eb',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
   },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  announcementsList: {
-    flex: 1,
-  },
-  announcementCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pinnedCard: {
-    borderWidth: 2,
-    borderColor: '#d4af37',
-  },
-  expiredCard: {
-    opacity: 0.6,
-  },
-  announcementHeader: {
-    marginBottom: 12,
-  },
-  announcementTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  pinIcon: {
-    marginRight: 8,
-  },
-  announcementTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  badge: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    color: '#374151',
-    textTransform: 'capitalize',
-  },
-  deleteButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 8,
-  },
-  announcementContent: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  announcementFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  expiredText: {
-    color: '#ef4444',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  pinnedCard: { borderColor: GOLD, borderWidth: 1.5 },
+  expiredCard: { opacity: 0.6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1 },
+  expiredText: { color: '#9ca3af' },
+  deleteBtn: { padding: 4 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  roleBadge: { backgroundColor: '#eff6ff', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  roleBadgeText: { fontSize: 11, color: '#1d4ed8', fontWeight: '600' },
+  deptBadge: { backgroundColor: '#f0fdf4', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  deptBadgeText: { fontSize: 11, color: '#166534', fontWeight: '600' },
+  expiredBadge: { backgroundColor: '#fee2e2', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  expiredBadgeText: { fontSize: 11, color: '#991b1b', fontWeight: '600' },
+  content: { fontSize: 13, color: '#374151', lineHeight: 19, marginBottom: 10 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  author: { fontSize: 11, color: '#9ca3af' },
+  footerRight: { alignItems: 'flex-end' },
+  dateText: { fontSize: 11, color: '#9ca3af' },
+  expiresText: { fontSize: 11, color: '#f59e0b', marginTop: 2 },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalScrollContent: { flexGrow: 1, justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4, marginTop: 12 },
+  input: {
+    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827',
+    backgroundColor: '#f9fafb',
   },
-  modalButton: {
-    backgroundColor: '#d4af37',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 12,
+  textArea: { height: 90, textAlignVertical: 'top' },
+  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  optionBtn: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#f9fafb',
   },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  optionBtnActive: { backgroundColor: GOLD, borderColor: GOLD },
+  optionBtnText: { fontSize: 13, color: '#374151' },
+  optionBtnTextActive: { color: '#fff', fontWeight: '600' },
+  switchRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 14, paddingVertical: 4,
   },
+  switchLabel: { fontSize: 14, color: '#374151', fontWeight: '600' },
+  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center',
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  submitBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: GOLD, alignItems: 'center' },
+  submitBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
 
 export default AnnouncementsPanel;

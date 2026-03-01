@@ -1,75 +1,129 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRotas } from '../../hooks/useRotas';
 
+const GOLD = '#d4af37';
+
 const RotaCalendar = () => {
-  const { user } = useAuth();
-  const { rotas, loading } = useRotas();
+  const { user, isAdmin, isManager } = useAuth();
+  const { rotas, loading, refetch } = useRotas();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Filter rotas for current user
-  const userRotas = rotas.filter(rota => rota.employee_id === user?.id);
+  // Admins/managers see ALL shifts; employees see only their own
+  const isAdminOrManager = isAdmin || isManager;
+  const displayRotas = isAdminOrManager
+    ? rotas
+    : rotas.filter((r) => r.employee_id === user?.id);
 
-  // Create marked dates object for calendar
+  // Poll every 10 seconds (matching webapp behaviour)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  // Build marked dates — multi-dot for admin (one dot per employee), single dot for employee
   const markedDates = {};
-  userRotas.forEach(rota => {
+  displayRotas.forEach((rota) => {
     const shiftType = rota.shift_pattern?.type || 'off';
-    let color = '#6b7280'; // off
-    if (shiftType === 'day') color = '#fbbf24'; // yellow
-    if (shiftType === 'night') color = '#1e293b'; // dark blue
+    const color = rota.shift_pattern?.color ||
+      (shiftType === 'day' ? '#fbbf24' : shiftType === 'night' ? '#1e293b' : '#9ca3af');
 
-    markedDates[rota.date] = {
-      marked: true,
-      dotColor: color,
-      selected: rota.date === selectedDate,
-      selectedColor: color,
-    };
+    if (!markedDates[rota.date]) {
+      markedDates[rota.date] = { dots: [] };
+    }
+    // Cap dots at 3 to avoid overflow; key must be a string for react-native-calendars
+    if (markedDates[rota.date].dots.length < 3) {
+      markedDates[rota.date].dots.push({ color, key: String(rota.id) });
+    }
   });
 
-  const selectedRota = userRotas.find(r => r.date === selectedDate);
+  // Highlight selected date
+  if (selectedDate) {
+    markedDates[selectedDate] = {
+      ...(markedDates[selectedDate] || {}),
+      selected: true,
+      selectedColor: GOLD,
+    };
+  }
+
+  // Shifts on the selected date
+  const shiftsOnDate = displayRotas.filter((r) => r.date === selectedDate);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color={GOLD} />
+        <Text style={styles.loadingText}>Loading schedule...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Calendar
         current={selectedDate}
         markedDates={markedDates}
+        markingType="multi-dot"
         onDayPress={(day) => setSelectedDate(day.dateString)}
         theme={{
-          todayTextColor: '#d4af37',
-          selectedDayBackgroundColor: '#d4af37',
-          arrowColor: '#d4af37',
+          todayTextColor: GOLD,
+          selectedDayBackgroundColor: GOLD,
+          arrowColor: GOLD,
+          dotColor: GOLD,
+          selectedDotColor: '#fff',
         }}
       />
 
-      {selectedRota && (
-        <View style={styles.shiftDetails}>
-          <Text style={styles.shiftTitle}>Shift Details</Text>
-          <Text style={styles.shiftText}>
-            <Text style={styles.shiftLabel}>Type: </Text>
-            {selectedRota.shift_pattern?.name || 'Off'}
-          </Text>
-          {selectedRota.shift_pattern?.start_time && (
-            <Text style={styles.shiftText}>
-              <Text style={styles.shiftLabel}>Time: </Text>
-              {selectedRota.shift_pattern.start_time} - {selectedRota.shift_pattern.end_time}
-            </Text>
-          )}
-          {selectedRota.notes && (
-            <Text style={styles.shiftText}>
-              <Text style={styles.shiftLabel}>Notes: </Text>
-              {selectedRota.notes}
-            </Text>
-          )}
-        </View>
-      )}
+      {/* Shifts on selected date */}
+      <View style={styles.detailSection}>
+        <Text style={styles.detailTitle}>
+          {selectedDate === new Date().toISOString().split('T')[0]
+            ? "Today's Shifts"
+            : `Shifts on ${selectedDate}`}
+        </Text>
 
-      {!selectedRota && (
-        <View style={styles.noShift}>
-          <Text style={styles.noShiftText}>No shift scheduled for this date</Text>
-        </View>
-      )}
+        {shiftsOnDate.length === 0 ? (
+          <View style={styles.noShift}>
+            <Ionicons name="calendar-outline" size={20} color="#d1d5db" />
+            <Text style={styles.noShiftText}>No shifts scheduled</Text>
+          </View>
+        ) : (
+          shiftsOnDate.map((rota) => {
+            const shiftColor = rota.shift_pattern?.color ||
+              (rota.shift_pattern?.type === 'day' ? '#fbbf24'
+                : rota.shift_pattern?.type === 'night' ? '#1e293b' : '#9ca3af');
+            return (
+              <View key={rota.id} style={styles.shiftRow}>
+                <View style={[styles.shiftColorBar, { backgroundColor: shiftColor }]} />
+                <View style={styles.shiftInfo}>
+                  {isAdminOrManager && (
+                    <Text style={styles.shiftEmployee}>{rota.employee_name}</Text>
+                  )}
+                  <Text style={styles.shiftName}>
+                    {rota.shift_pattern?.name || 'Shift'}
+                  </Text>
+                  {rota.shift_pattern?.start_time && (
+                    <Text style={styles.shiftTime}>
+                      {rota.shift_pattern.start_time} – {rota.shift_pattern.end_time}
+                    </Text>
+                  )}
+                  {rota.notes && (
+                    <Text style={styles.shiftNotes}>{rota.notes}</Text>
+                  )}
+                </View>
+                {!!rota.is_locked && (
+                  <Ionicons name="lock-closed" size={14} color="#9ca3af" />
+                )}
+              </View>
+            );
+          })
+        )}
+      </View>
     </View>
   );
 };
@@ -78,41 +132,82 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  shiftDetails: {
-    marginTop: 16,
+  loadingContainer: {
+    padding: 32,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#9ca3af',
+    marginTop: 8,
+  },
+  detailSection: {
     padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 10,
+  },
+  shiftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f9fafb',
     borderRadius: 8,
-  },
-  shiftTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  shiftText: {
-    fontSize: 14,
-    color: '#374151',
     marginBottom: 8,
+    overflow: 'hidden',
   },
-  shiftLabel: {
+  shiftColorBar: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  shiftInfo: {
+    flex: 1,
+    padding: 10,
+  },
+  shiftEmployee: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  shiftName: {
+    fontSize: 13,
     fontWeight: '600',
+    color: '#374151',
+  },
+  shiftTime: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  shiftNotes: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   noShift: {
-    marginTop: 16,
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    justifyContent: 'center',
   },
   noShiftText: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#9ca3af',
   },
 });
 
