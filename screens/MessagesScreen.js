@@ -52,15 +52,15 @@ const MessagesScreen = () => {
             style={[styles.tab, activeTab === 'individual' && styles.tabActive]}
             onPress={() => setActiveTab('individual')}
           >
-            <Ionicons name="chatbubbles-outline" size={20} />
-            <Text style={styles.tabText}>Individual</Text>
+            <Ionicons name="chatbubbles-outline" size={20} color={activeTab === 'individual' ? '#d4af37' : '#6b7280'} />
+            <Text style={[styles.tabText, activeTab === 'individual' && styles.tabTextActive]}>Individual</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'group' && styles.tabActive]}
             onPress={() => setActiveTab('group')}
           >
-            <Ionicons name="people-outline" size={20} />
-            <Text style={styles.tabText}>Group</Text>
+            <Ionicons name="people-outline" size={20} color={activeTab === 'group' ? '#d4af37' : '#6b7280'} />
+            <Text style={[styles.tabText, activeTab === 'group' && styles.tabTextActive]}>Group</Text>
           </TouchableOpacity>
         </View>
 
@@ -100,17 +100,17 @@ const MessagesScreen = () => {
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'individual' && styles.tabActive]}
-          onPress={() => setActiveTab('individual')}
-        >
-          <Ionicons name="chatbubbles-outline" size={20} />
-          <Text style={styles.tabText}>Individual</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'group' && styles.tabActive]}
-          onPress={() => setActiveTab('group')}
-        >
-          <Ionicons name="people-outline" size={20} />
-          <Text style={styles.tabText}>Group</Text>
+            onPress={() => setActiveTab('individual')}
+          >
+            <Ionicons name="chatbubbles-outline" size={20} color={activeTab === 'individual' ? '#d4af37' : '#6b7280'} />
+            <Text style={[styles.tabText, activeTab === 'individual' && styles.tabTextActive]}>Individual</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'group' && styles.tabActive]}
+            onPress={() => setActiveTab('group')}
+          >
+            <Ionicons name="people-outline" size={20} color={activeTab === 'group' ? '#d4af37' : '#6b7280'} />
+            <Text style={[styles.tabText, activeTab === 'group' && styles.tabTextActive]}>Group</Text>
         </TouchableOpacity>
       </View>
 
@@ -206,22 +206,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 10,
+    borderRadius: 12,
   },
   tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#d4af37',
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#d4af37',
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  tabTextActive: {
+    color: '#d4af37',
   },
   content: {
     flex: 1,
@@ -236,7 +246,7 @@ const styles = StyleSheet.create({
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -284,13 +294,15 @@ const styles = StyleSheet.create({
   },
   messagesList: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   messageContainer: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   messageSender: {
     fontSize: 14,

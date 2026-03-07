@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
-import CustomDrawer from '../components/layout/CustomDrawer';
 import Header from '../components/layout/Header';
 import AdvanceSalaryScreen from '../screens/AdvanceSalaryScreen';
 import AnnouncementsScreen from '../screens/AnnouncementsScreen';
@@ -14,14 +12,17 @@ import EmployeeManagementScreen from '../screens/EmployeeManagementScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
 import FinancialManagementScreen from '../screens/FinancialManagementScreen';
 import MessagesScreen from '../screens/MessagesScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import RequestsScreen from '../screens/RequestsScreen';
 import RotaManagementScreen from '../screens/RotaManagementScreen';
 import SalaryScreen from '../screens/SalaryScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
+import SecurityScreen from '../screens/SecurityScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import SystemScreen from '../screens/SystemScreen';
 
-const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -74,7 +75,8 @@ const MainTabs = () => (
       tabBarActiveTintColor: ACTIVE_COLOR,
       tabBarInactiveTintColor: INACTIVE_COLOR,
       tabBarStyle: styles.tabBar,
-      tabBarShowLabel: false,
+      tabBarShowLabel: true,
+      tabBarLabelStyle: styles.tabBarLabel,
     })}
   >
     <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
@@ -92,6 +94,7 @@ const MainStack = () => {
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
       <Stack.Screen name="Expenses" component={ExpensesScreen} />
@@ -102,30 +105,15 @@ const MainStack = () => {
       <Stack.Screen name="FinancialManagement" component={FinancialManagementScreen} />
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="AuditLog" component={AuditLogScreen} />
+      <Stack.Screen name="Security" component={SecurityScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="System" component={SystemScreen} />
     </Stack.Navigator>
   );
 };
 
 const MainNavigator = () => {
-  return (
-    <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawer {...props} />}
-      screenOptions={{
-        headerShown: false,
-        drawerType: 'front',
-        // Use simpler animation for Expo Go compatibility
-        drawerStyle: {
-          width: 280,
-        },
-        overlayColor: 'rgba(0, 0, 0, 0.5)',
-        // Disable gesture handler animations that require reanimated
-        gestureEnabled: true,
-        swipeEnabled: true,
-      }}
-    >
-      <Drawer.Screen name="MainStack" component={MainStack} />
-    </Drawer.Navigator>
-  );
+  return <MainStack />;
 };
 
 const styles = StyleSheet.create({
@@ -160,25 +148,29 @@ const styles = StyleSheet.create({
     backgroundColor: ACTIVE_COLOR,
     marginTop: 6,
   },
+  tabBarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   tabBar: {
     backgroundColor: '#ffffff',
     borderTopWidth: 0,
-    marginHorizontal: 16,
-    marginBottom: Platform.OS === 'ios' ? 28 : 12,
-    marginTop: 8,
-    height: Platform.OS === 'ios' ? 64 : 56,
-    paddingTop: 4,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    marginHorizontal: 20,
+    marginBottom: Platform.OS === 'ios' ? 28 : 14,
+    marginTop: 10,
+    height: Platform.OS === 'ios' ? 72 : 66,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
     borderRadius: 28,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 12,
+        elevation: 16,
       },
     }),
   },

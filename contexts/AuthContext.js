@@ -137,6 +137,14 @@ export const AuthProvider = ({ children }) => {
     });
   }, [user, session, isAuthenticated, loading]);
 
+  const refreshProfile = async () => {
+    try {
+      await fetchUserProfile();
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
   const value = {
     user,
     profile,
@@ -146,6 +154,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     loading,
     isAuthenticated,
+    refreshProfile,
     isAdmin: profile?.role === 'admin',
     isManager: profile?.role === 'manager',
     isEmployee: profile?.role === 'employee',

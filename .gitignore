@@ -17,3 +17,6 @@ web-build/
 # Temporary files
 *.log
 *.tmp
+
+# Uploaded files (avatars)
+uploads/

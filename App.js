@@ -2,6 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, LogBox, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -72,10 +73,12 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <StatusBar style="auto" />
-      <AppContent />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <StatusBar style="auto" />
+        <AppContent />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

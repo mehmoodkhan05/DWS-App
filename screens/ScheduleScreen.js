@@ -8,7 +8,9 @@ const ScheduleScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>My Schedule</Text>
       </View>
-      <RotaCalendar />
+      <View style={styles.calendarWrapper}>
+        <RotaCalendar />
+      </View>
     </ScrollView>
   );
 };
@@ -19,7 +21,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   header: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -28,6 +31,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
+    letterSpacing: 0.2,
+  },
+  calendarWrapper: {
+    padding: 20,
+    paddingTop: 16,
   },
 });
 

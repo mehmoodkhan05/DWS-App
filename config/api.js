@@ -58,7 +58,19 @@ export const getApiBaseUrl = () => {
   return PROD_API_URL;
 };
 
-// You can also set this via environment variables in Expo
-// For example, using expo-constants:
-// import Constants from 'expo-constants';
-// const apiUrl = Constants.expoConfig?.extra?.apiUrl || getApiBaseUrl();
+// Get base URL for static uploads (avatars) - server root without /api
+export const getUploadsBaseUrl = () => {
+  const apiUrl = getApiBaseUrl();
+  return apiUrl.replace(/\/api\/?$/, '') || apiUrl;
+};
+
+// Build full avatar URL from avatar_url stored in DB (e.g. /uploads/avatars/xxx.jpg)
+export const getAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl) return null;
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+  const base = getUploadsBaseUrl();
+  const path = avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`;
+  return `${base}${path}`;
+};
