@@ -1,21 +1,21 @@
-import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
-import authRoutes from './routes/auth.js';
-import profilesRoutes from './routes/profiles.js';
-import rotasRoutes from './routes/rotas.js';
-import requestsRoutes from './routes/requests.js';
-import messagesRoutes from './routes/messages.js';
+import advanceSalariesRoutes from './routes/advanceSalaries.js';
 import announcementsRoutes from './routes/announcements.js';
 import auditLogRoutes from './routes/auditLog.js';
+import authRoutes from './routes/auth.js';
 import expenseCategoriesRoutes from './routes/expenseCategories.js';
 import expensesRoutes from './routes/expenses.js';
 import incomeRoutes from './routes/income.js';
+import messagesRoutes from './routes/messages.js';
+import profilesRoutes from './routes/profiles.js';
+import requestsRoutes from './routes/requests.js';
+import rotasRoutes from './routes/rotas.js';
 import salariesRoutes from './routes/salaries.js';
-import advanceSalariesRoutes from './routes/advanceSalaries.js';
 
 dotenv.config();
 
@@ -46,52 +46,33 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files (avatars) - stored at project-root/uploads
-const uploadsPath = path.join(__dirname, '..', 'uploads');
-const avatarsPath = path.join(uploadsPath, 'avatars');
-if (!fs.existsSync(avatarsPath)) {
-  fs.mkdirSync(avatarsPath, { recursive: true });
-}
-app.use('/uploads', express.static(uploadsPath));
-
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', true);
 
 // Base path for subdirectory deployments (e.g., /dwsoffice/)
-// This needs to be applied BEFORE API routes so they work correctly
+// MUST run BEFORE static and API routes so /uploads and /api paths are resolved correctly
 const BASE_PATH = process.env.BASE_PATH || '';
 
 // Middleware to strip base path from requests if present
-// This handles cases where cPanel doesn't strip the subdirectory prefix
-// Also handles cases where the path might include the base path
 if (BASE_PATH || NODE_ENV === 'production') {
   app.use((req, res, next) => {
-    // Use req.url instead of req.path to get the full original URL
     let originalUrl = req.url;
     let needsUpdate = false;
     let newPath = originalUrl;
-    
-    // Extract path without query string for checking
     const urlPath = originalUrl.split('?')[0];
     const queryString = originalUrl.includes('?') ? originalUrl.substring(originalUrl.indexOf('?')) : '';
-    
-    // If BASE_PATH is set and path starts with it, strip it
+
     if (BASE_PATH && urlPath.startsWith(BASE_PATH)) {
       newPath = urlPath.replace(BASE_PATH, '') || '/';
       needsUpdate = true;
-    }
-    // Also check common subdirectory patterns (in case BASE_PATH isn't set but path includes /dwsoffice/)
-    else if (urlPath.startsWith('/dwsoffice/')) {
+    } else if (urlPath.startsWith('/dwsoffice/')) {
       newPath = urlPath.replace('/dwsoffice/', '/');
       needsUpdate = true;
-    }
-    // Check for /dwsoffice/api pattern specifically
-    else if (urlPath.startsWith('/dwsoffice/api')) {
+    } else if (urlPath.startsWith('/dwsoffice/api')) {
       newPath = urlPath.replace('/dwsoffice', '');
       needsUpdate = true;
     }
-    
-    // Update the request URL (req.path is read-only, so we modify req.url)
+
     if (needsUpdate) {
       req.url = newPath + queryString;
       console.log(`Path normalized: ${originalUrl} -> ${req.url}`);
@@ -99,6 +80,14 @@ if (BASE_PATH || NODE_ENV === 'production') {
     next();
   });
 }
+
+// Serve uploaded files (avatars) - stored at project-root/uploads, profiles.avatar_url = /uploads/avatars/filename.jpg
+const uploadsPath = path.join(__dirname, '..', 'uploads');
+const avatarsPath = path.join(uploadsPath, 'avatars');
+if (!fs.existsSync(avatarsPath)) {
+  fs.mkdirSync(avatarsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath));
 
 // API Routes
 // Health check endpoint (before other API routes)

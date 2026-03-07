@@ -59,18 +59,25 @@ export const getApiBaseUrl = () => {
 };
 
 // Get base URL for static uploads (avatars) - server root without /api
+// Set UPLOADS_BASE_URL explicitly if uploads are served from a different domain/path (e.g. CDN)
 export const getUploadsBaseUrl = () => {
+  if (typeof global?.UPLOADS_BASE_URL === 'string' && global.UPLOADS_BASE_URL) {
+    return global.UPLOADS_BASE_URL.replace(/\/$/, '');
+  }
   const apiUrl = getApiBaseUrl();
   return apiUrl.replace(/\/api\/?$/, '') || apiUrl;
 };
 
-// Build full avatar URL from avatar_url stored in DB (e.g. /uploads/avatars/xxx.jpg)
+// Build full avatar URL from avatar_url stored in DB (profiles.avatar_url)
+// DB stores: /uploads/avatars/filename.jpg (or full https URL)
 export const getAvatarUrl = (avatarUrl) => {
-  if (!avatarUrl) return null;
-  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
-    return avatarUrl;
+  if (!avatarUrl || typeof avatarUrl !== 'string') return null;
+  const trimmed = avatarUrl.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
   }
-  const base = getUploadsBaseUrl();
-  const path = avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`;
+  const base = getUploadsBaseUrl().replace(/\/$/, '');
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   return `${base}${path}`;
 };
