@@ -65,6 +65,30 @@ const TabIcon = ({ route, focused, color, size }) => {
   );
 };
 
+// No header in Settings stack – Tab Navigator already shows the header once for this tab
+const noHeader = { headerShown: false };
+
+// Settings stack: all screens accessible from Settings menu stay inside this tab so the bottom tab bar is always visible
+const SettingsStack = () => (
+  <Stack.Navigator screenOptions={noHeader}>
+    <Stack.Screen name="Settings" component={SettingsScreen} options={noHeader} />
+    <Stack.Screen name="Profile" component={ProfileScreen} options={noHeader} />
+    <Stack.Screen name="Requests" component={RequestsScreen} options={noHeader} />
+    <Stack.Screen name="Announcements" component={AnnouncementsScreen} options={noHeader} />
+    <Stack.Screen name="Expenses" component={ExpensesScreen} options={noHeader} />
+    <Stack.Screen name="AdvanceSalary" component={AdvanceSalaryScreen} options={noHeader} />
+    <Stack.Screen name="Salary" component={SalaryScreen} options={noHeader} />
+    <Stack.Screen name="EmployeeManagement" component={EmployeeManagementScreen} options={noHeader} />
+    <Stack.Screen name="RotaManagement" component={RotaManagementScreen} options={noHeader} />
+    <Stack.Screen name="FinancialManagement" component={FinancialManagementScreen} options={noHeader} />
+    <Stack.Screen name="Reports" component={ReportsScreen} options={noHeader} />
+    <Stack.Screen name="AuditLog" component={AuditLogScreen} options={noHeader} />
+    <Stack.Screen name="Security" component={SecurityScreen} options={noHeader} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} options={noHeader} />
+    <Stack.Screen name="System" component={SystemScreen} options={noHeader} />
+  </Stack.Navigator>
+);
+
 const MainTabs = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
@@ -82,38 +106,12 @@ const MainTabs = () => (
     <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
     <Tab.Screen name="Schedule" component={ScheduleScreen} options={{ tabBarLabel: 'My Schedule' }} />
     <Tab.Screen name="Messages" component={MessagesScreen} options={{ tabBarLabel: 'Messages' }} />
-    <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Settings' }} />
+    <Tab.Screen name="Settings" component={SettingsStack} options={{ tabBarLabel: 'Settings' }} />
   </Tab.Navigator>
 );
 
-const MainStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        header: () => <Header />,
-      }}
-    >
-      <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
-      <Stack.Screen name="Requests" component={RequestsScreen} />
-      <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
-      <Stack.Screen name="Expenses" component={ExpensesScreen} />
-      <Stack.Screen name="AdvanceSalary" component={AdvanceSalaryScreen} />
-      <Stack.Screen name="Salary" component={SalaryScreen} />
-      <Stack.Screen name="EmployeeManagement" component={EmployeeManagementScreen} />
-      <Stack.Screen name="RotaManagement" component={RotaManagementScreen} />
-      <Stack.Screen name="FinancialManagement" component={FinancialManagementScreen} />
-      <Stack.Screen name="Reports" component={ReportsScreen} />
-      <Stack.Screen name="AuditLog" component={AuditLogScreen} />
-      <Stack.Screen name="Security" component={SecurityScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="System" component={SystemScreen} />
-    </Stack.Navigator>
-  );
-};
-
 const MainNavigator = () => {
-  return <MainStack />;
+  return <MainTabs />;
 };
 
 const styles = StyleSheet.create({
